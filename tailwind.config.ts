@@ -9,8 +9,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        dhermica: {
+          back: '#c4c8c5',
+          primary: '#484450',
+          secondary: '#466067',
+          success: '#34baab',
+          info: '#459a96',
+          warning: '#FFD700',
+          error: '#FF5733'
+        }
       },
     },
   },
