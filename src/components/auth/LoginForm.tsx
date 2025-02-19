@@ -6,12 +6,14 @@ import { loginWithEmail, loginWithGoogle } from '@/lib/firebase/auth'
 import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [resetEmailSent, setResetEmailSent] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,6 +48,21 @@ export default function LoginForm() {
 
     if (user) {
       router.push('/dashboard')
+    }
+  }
+
+  const handlePasswordReset = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const auth = getAuth()
+      await sendPasswordResetEmail(auth, email)
+      setResetEmailSent(true) // Mostrar mensaje de éxito
+    } catch (error) {
+      setError('Hubo un error al intentar enviar el correo')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -107,6 +124,23 @@ export default function LoginForm() {
               Regístrate aquí
             </Link>
           </p>
+
+          <p className="text-sm text-dhermica-primary/70 mt-2">
+            ¿Olvidaste tu contraseña?{' '}
+            <button
+              type="button"
+              onClick={handlePasswordReset}
+              className="font-medium text-dhermica-info hover:text-dhermica-info transition-colors"
+            >
+              Restablecer contraseña
+            </button>
+          </p>
+
+          {resetEmailSent && (
+            <p className="text-sm text-dhermica-success mt-2">
+              Hemos enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.
+            </p>
+          )}
         </div>
       </form>
     </div>
