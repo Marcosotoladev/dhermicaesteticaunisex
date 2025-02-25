@@ -37,6 +37,7 @@ interface ProfileData {
 interface ChatBotProps {
   onComplete: (data: ProfileData) => void;
   onClose: () => void;
+  existingData?: ProfileData;
 }
 
 interface ChatStep {
@@ -134,32 +135,47 @@ const CHAT_STEPS: ChatStep[] = [
   }
 ]
 
-export function ChatBot({ onComplete, onClose }: ChatBotProps) {
+export function ChatBot({ onComplete, onClose, existingData }: ChatBotProps) {
+
   const [messages, setMessages] = useState<Message[]>([{
     id: Date.now().toString(),
     type: 'bot',
-    content: CHAT_STEPS[0].content,
-    options: CHAT_STEPS[0].options
+    content: existingData 
+      ? '¿Qué te gustaría actualizar de tu perfil?'
+      : CHAT_STEPS[0].content,
+    options: existingData 
+      ? ['Datos personales', 'Información médica', 'Cancelar']
+      : CHAT_STEPS[0].options
   }])
 
 
   const [currentStep, setCurrentStep] = useState(0)
-  const [profileData, setProfileData] = useState<Partial<ProfileData>>({
-    personalInfo: {
-      fullName: '',
-      address: '',
-      phone: '',
-      birthDate: ''
-    },
-    medicalInfo: {
-      tattoos: { has: false, locations: [] },
-      skinProblems: [],
-      cancer: { has: false, details: '' },
-      allergies: [],
-      currentMedications: [],
-      previousTreatments: []
+
+  const [profileData, setProfileData] = useState<Partial<ProfileData>>(
+    existingData ?? {
+      personalInfo: {
+        fullName: '',
+        address: '',
+        phone: '',
+        birthDate: ''
+      },
+      medicalInfo: {
+        tattoos: { 
+          has: false, 
+          locations: [] 
+        },
+        skinProblems: [],
+        cancer: { 
+          has: false, 
+          details: '' 
+        },
+        allergies: [],
+        currentMedications: [],
+        previousTreatments: []
+      }
     }
-  })
+  )
+
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
   const [userInput, setUserInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -202,19 +218,43 @@ export function ChatBot({ onComplete, onClose }: ChatBotProps) {
     nextStep()
   }
 
-  const handleOption = (option: string) => {
-    const currentStepData = CHAT_STEPS[currentStep]
-    addUserMessage(option)
+// En ChatBot.tsx, modificar el método handleOption
+const handleOption = (option: string) => {
+  const currentStepData = CHAT_STEPS[currentStep]
+  addUserMessage(option)
 
-    if (currentStepData.id === 'welcome' && option === 'Más tarde') {
+  // Si estamos en el mensaje inicial de edición
+  if (existingData && currentStep === 0) {
+    if (option === 'Cancelar') {
       onClose()
       return
+    } else if (option === 'Datos personales') {
+      // Saltamos a las preguntas de datos personales
+      setTimeout(() => {
+        addBotMessage(CHAT_STEPS[1]) // Pregunta por el nombre
+        setCurrentStep(1)
+      }, 500)
+      return
+    } else if (option === 'Información médica') {
+      // Saltamos a las preguntas médicas
+      setTimeout(() => {
+        addBotMessage(CHAT_STEPS[5]) // Pregunta por tatuajes
+        setCurrentStep(5)
+      }, 500)
+      return
     }
-
-    const value = currentStepData.type === 'boolean' ? option === 'Sí' : option
-    updateProfileData(currentStepData.field, value)
-    nextStep()
   }
+
+  // Para el flujo normal o cuando no estamos en el paso inicial de edición
+  if (currentStepData.id === 'welcome' && option === 'Más tarde') {
+    onClose()
+    return
+  }
+
+  const value = currentStepData.type === 'boolean' ? option === 'Sí' : option
+  updateProfileData(currentStepData.field, value)
+  nextStep()
+}
 
   const handleMultiSelect = (option: string) => {
     setSelectedOptions(prev => {
@@ -263,6 +303,38 @@ export function ChatBot({ onComplete, onClose }: ChatBotProps) {
   }
 
   const nextStep = () => {
+    // Si estamos en modo edición y llegamos al final de una sección
+    if (existingData) {
+      if (currentStep === 4) { // Último paso de datos personales (birthDate)
+        // Terminar después de los datos personales en modo edición
+        setTimeout(() => {
+          addBotMessage({
+            id: 'complete',
+            content: '¡Gracias! Tus datos personales han sido actualizados.',
+            type: 'text',
+            field: 'complete'
+          })
+          onComplete(profileData as ProfileData)
+        }, 500)
+        return
+      }
+      
+      if (currentStep === CHAT_STEPS.length - 1) {
+        // Final del flujo completo
+        setTimeout(() => {
+          addBotMessage({
+            id: 'complete',
+            content: '¡Gracias! Tu información médica ha sido actualizada.',
+            type: 'text',
+            field: 'complete'
+          })
+          onComplete(profileData as ProfileData)
+        }, 500)
+        return
+      }
+    }
+  
+    // Flujo normal cuando no estamos en edición o continuamos dentro de una sección
     if (currentStep < CHAT_STEPS.length - 1) {
       const nextStepData = CHAT_STEPS[currentStep + 1]
       setTimeout(() => {

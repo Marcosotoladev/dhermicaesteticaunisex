@@ -65,9 +65,9 @@ export default function ProfilePage() {
 
   return (
     <div>
-      <ProfileBanner 
-        isComplete={isProfileComplete} 
-        onStartChat={handleStartChat} 
+      <ProfileBanner
+        isComplete={isProfileComplete}
+        onStartChat={handleStartChat}
       />
 
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
@@ -154,9 +154,10 @@ export default function ProfilePage() {
       </div>
 
       {showChat && (
-        <ChatBot 
+        <ChatBot
           onComplete={handleChatComplete}
           onClose={() => setShowChat(false)}
+          existingData={profileData ? profileData : undefined}
         />
       )}
     </div>
