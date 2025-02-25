@@ -8,6 +8,8 @@ import { ChatBot } from '@/components/profile/ChatBot'
 import { getProfile, saveProfile } from '@/lib/firebase/profile'
 import type { ProfileData } from '@/types/profile'
 import Image from 'next/image'
+import { ImageUploader } from '@/components/profile/ImageUploader'
+import { Camera } from 'lucide-react'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -16,27 +18,35 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  const [showImageUploader, setShowImageUploader] = useState(false)
+
   useEffect(() => {
     if (user) {
-      loadProfile()
+      loadProfile();
     }
-  }, [user])
+  }, [user]);
 
   const loadProfile = async () => {
-    if (!user) return
+    if (!user) return;
 
-    const { profile, error } = await getProfile(user.uid)
+    const { profile, error } = await getProfile(user.uid);
     if (error) {
-      console.error('Error loading profile:', error)
-      return
+      console.error('Error loading profile:', error);
+      return;
     }
 
     if (profile) {
-      setProfileData(profile as ProfileData)
-      setIsProfileComplete(true)
+      setProfileData(profile as ProfileData);
+      setIsProfileComplete(true);
+      // Guardar la imagen del perfil si existe
+      if (profile.profileImageData) {
+        setProfileImage(profile.profileImageData);
+      }
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const handleStartChat = () => {
     setShowChat(true)
@@ -63,6 +73,16 @@ export default function ProfilePage() {
     </div>
   }
 
+  const handleImageUploadSuccess = (url: string) => {
+    // Actualizar estado local
+    setProfileImage(url);
+    // Cerrar el modal de subida
+    setShowImageUploader(false);
+    // No es necesario recargar toda la página
+    // window.location.reload()
+  }
+
+
   return (
     <div>
       <ProfileBanner
@@ -74,22 +94,58 @@ export default function ProfilePage() {
         {/* Header con foto de perfil */}
         <div className="bg-gradient-to-r from-dhermica-success to-dhermica-info p-6">
           <div className="flex flex-col items-center">
+
+
             <div className="relative w-24 h-24 mb-4">
-              {user?.photoURL ? (
-                <Image
-                  src={user.photoURL}
-                  alt="Foto de perfil"
-                  fill
-                  className="rounded-full object-cover border-4 border-white"
-                />
+              {profileImage ? (
+                // Caso 1: Imagen guardada en Firestore
+                <>
+                  <Image
+                    src={profileImage}
+                    alt="Foto de perfil"
+                    fill
+                    className="rounded-full object-cover border-4 border-white"
+                  />
+                  <button
+                    onClick={() => setShowImageUploader(true)}
+                    className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md"
+                  >
+                    <Camera className="w-4 h-4 text-dhermica-primary" />
+                  </button>
+                </>
+              ) : user?.photoURL ? (
+                // Caso 2: Foto de Google/Firebase Auth
+                <>
+                  <Image
+                    src={user.photoURL}
+                    alt="Foto de perfil"
+                    fill
+                    className="rounded-full object-cover border-4 border-white"
+                  />
+                  <button
+                    onClick={() => setShowImageUploader(true)}
+                    className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md"
+                  >
+                    <Camera className="w-4 h-4 text-dhermica-primary" />
+                  </button>
+                </>
               ) : (
-                <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
+                // Caso 3: Sin foto
+                <div className="w-full h-full rounded-full bg-white flex items-center justify-center relative">
                   <span className="text-3xl text-dhermica-primary">
                     {user?.email?.[0].toUpperCase()}
                   </span>
+                  <button
+                    onClick={() => setShowImageUploader(true)}
+                    className="absolute bottom-0 right-0 bg-white rounded-full p-1.5 shadow-md"
+                  >
+                    <Camera className="w-4 h-4 text-dhermica-primary" />
+                  </button>
                 </div>
               )}
             </div>
+
+
             <h2 className="text-white text-xl font-medium">
               {profileData?.personalInfo.fullName || user?.displayName || 'Usuario'}
             </h2>
@@ -160,6 +216,16 @@ export default function ProfilePage() {
           existingData={profileData ? profileData : undefined}
         />
       )}
+
+      {showImageUploader && user && (
+        <ImageUploader
+          userId={user.uid}
+          currentPhotoURL={user.photoURL}
+          onUploadSuccess={handleImageUploadSuccess}
+          onClose={() => setShowImageUploader(false)}
+        />
+      )}
+
     </div>
   )
 }
